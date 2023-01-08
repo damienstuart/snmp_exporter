@@ -84,6 +84,14 @@ func handler(w http.ResponseWriter, r *http.Request, logger log.Logger) {
 	if moduleName == "" {
 		moduleName = "if_mib"
 	}
+
+	community := query.Get("community")
+	if len(query["community"]) > 1 {
+		http.Error(w, "'community' parameter must only be specified once", 400)
+		snmpRequestErrors.Inc()
+		return
+	}
+
 	sc.RLock()
 	module, ok := (*(sc.C))[moduleName]
 	sc.RUnlock()
@@ -98,7 +106,7 @@ func handler(w http.ResponseWriter, r *http.Request, logger log.Logger) {
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	c := collector.New(r.Context(), target, module, logger)
+	c := collector.New(r.Context(), target, module, community, logger)
 	registry.MustRegister(c)
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
